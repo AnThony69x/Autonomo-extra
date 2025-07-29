@@ -136,7 +136,7 @@ Recibe los datos generados por el LLM.
 
 ```mermaid
 graph TD
-    A[Inicio: POST /start-analysis-agent] --> B[Consulta: GET /consulta-texto]
+    A[Inicio: POST /v1/start-analysis-agent] --> B[Consulta: GET /consulta-texto]
     B --> C[Procesamiento con Gemini API]
     C --> D[Guardar con POST /guardar-respuesta]
     D --> E[Respuesta final al cliente]
