@@ -1,145 +1,160 @@
 
 # 🤖 Módulo de Agente Autónomo con Flujos - Análisis de Texto con Gemini AI
 
-Este módulo es una expansión del sistema `ExposIA` desarrollada con NestJS. Implementa un agente inteligente autónomo que orquesta un flujo automático de análisis de texto, utilizando **Gemini (Google Generative AI)**, y persiste los resultados en un endpoint externo.
+Este módulo forma parte del sistema `ExposIA`, y representa una extensión **individual** orientada a la integración de un **agente inteligente autónomo** que ejecuta un flujo completo de análisis de texto. El agente orquesta automáticamente consultas a otros microservicios y procesa los datos usando **Gemini (Google Generative AI)**.
 
 ---
 
-## 🚀 Funcionalidad
+## 🚀 Funcionalidad General
 
-Este módulo ejecuta un flujo en 3 pasos automáticos:
+El flujo automatizado consta de 3 pasos principales:
 
-1. **Obtención de texto** desde un endpoint externo (mock server).
-2. **Análisis del texto** usando un modelo LLM (Gemini API).
-3. **Persistencia de resultados** en un segundo endpoint vía POST.
-
----
-
-## 🧾 Justificación del Uso de Mock Server como Tecnología de Flujo
-
-Para cumplir con el requerimiento de utilizar una **tecnología externa de flujo**, se empleó **Postman Mock Server**. Esta herramienta permite simular de forma realista el comportamiento de endpoints externos de otros microservicios del grupo, sin depender de que estén en ejecución.
-
-Con esto se logra:
-
-- Orquestar un flujo **totalmente automatizado y externo** al módulo.
-- **Separar responsabilidades** entre microservicios de forma limpia.
-- Simular condiciones reales de producción sin necesidad de dependencias activas.
-- Cumplir con el requerimiento de consumir **otro microservicio del grupo**, usando URLs públicas.
+1. **Recepción del texto** enviado por el usuario vía endpoint (`respuesta-analizada`).
+2. **Procesamiento del texto con Gemini AI** vía API para generar una evaluación académica.
+3. **Persistencia de los resultados** en la base de datos del microservicio.
 
 ---
 
-## 🔧 Tecnologías Utilizadas
+## 📐 Justificación Técnica del Flujo
 
-- 🧠 Google Generative AI (Gemini API)
-- 🌐 NestJS (TypeScript)
-- 🧪 Postman (Mock Server para endpoints simulados)
-- ⚙️ Axios / HttpService para integración HTTP
-- 📦 dotenv / ConfigService para variables de entorno
+El agente recibe el texto desde un endpoint en el módulo `recomendaciones`, lo envía al agente autónomo en `practicas-ts`, que realiza el análisis con Gemini y **guarda el resultado de vuelta** en el microservicio `recomendaciones`, cumpliendo así con:
+
+- ✅ Activación mediante endpoint externo.
+- ✅ Consumo de un microservicio diferente al propio.
+- ✅ Proceso con LLM.
+- ✅ Persistencia de resultado mediante un endpoint POST.
 
 ---
 
-## 🧱 Estructura del Proyecto
+## 🧱 Estructura del Proyecto (Recomendaciones)
 
-```
-src/
-├── controllers/
-│   └── conversacion-ia.controller.ts
-├── services/
-│   └── conversacion-ia.service.ts
-├── dtos/
-│   └── consulta.dto.ts
-├── modules/
-│   └── conversacion-ia.module.ts
+```bash
+recomendaciones/
+├── src/
+│   └── respuesta/
+│       ├── dto/
+│       │   ├── enviar-texto.dto.ts
+│       │   └── create-respuesta.dto.ts
+│       ├── entities/
+│       │   └── respuesta.entity.ts
+│       ├── respuesta.controller.ts
+│       ├── respuesta.module.ts
+│       └── respuesta.service.ts
 ```
 
+## 🧱 Estructura del Proyecto (Agente - practicas-ts)
+
+```bash
+practicas-ts/
+├── src/
+│   ├── controllers/
+│   │   ├── conversacion-ia.controller.ts
+│   ├── services/
+│   │   ├── conversacion-ia.service.ts
+│   ├── modules/
+│   │   └── conversacion-ia.module.ts
+│   ├── dtos/
+│   │   └── consulta.dto.ts
+
 ---
 
-## 📌 Endpoints
+## 📌 Endpoints del Sistema
 
-### 1. `POST /v1/start-analysis-agent`
-Activa el agente autónomo. El flujo realiza:
+### 1. `POST /respuesta-analizada` (en módulo `recomendaciones`)
+Inicia el flujo completo del agente. Este endpoint:
 
-- GET a `/consulta-texto` (mock server)
-- Análisis del contenido con Gemini
-- POST a `/guardar-respuesta` (mock server)
+- Recibe el texto original.
+- Llama al módulo del agente (`/v1/start-analysis-agent`).
+- Recibe la evaluación de IA.
+- Guarda la respuesta en la base de datos.
 
-**Respuesta esperada:**
+📍 Ejemplo de llamada:
+```json
+POST http://localhost:4000/respuesta-analizada
+
+{
+  "texto": "Hoy quiero que recordemos una palabra que a veces olvidamos: propósito..."
+}
+```
+
+---
+
+### 2. `POST /v1/start-analysis-agent` (en módulo `practicas-ts`)
+Endpoint de activación del agente autónomo. Se encarga de:
+
+- Recibir el texto.
+- Enviarlo a Gemini API.
+- Retornar la respuesta procesada.
+
+📍 Ejemplo de respuesta:
 ```json
 {
-  "fuente_texto": "https://mockserver.com/consulta-texto",
-  "pregunta_enviada_a_ia": "Texto recibido...",
-  "respuesta_ia": "Respuesta generada por Gemini...",
+  "pregunta": "Texto enviado...",
+  "respuesta_ia": "Evaluación académica con sugerencias...",
   "estado": "ok"
 }
 ```
 
 ---
 
-### 2. `POST /v1/consultar-prueba-ia`
-Permite probar directamente el análisis de texto enviando un cuerpo manual:
-
-**Body:**
-```json
-{
-  "texto": "Texto a evaluar por la IA"
-}
-```
-
-**Respuesta:**
-```json
-{
-  "pregunta": "Texto a evaluar por la IA",
-  "respuesta_ia": "Evaluación detallada de Gemini",
-  "estado": "ok"
-}
-```
-
----
-
-## ⚙️ Requisitos de Entorno (`.env`)
+## ⚙️ Variables de Entorno `.env`
 
 ```env
-GEMINI_API_KEY=tu_api_key_de_google
+GEMINI_API_KEY=sk-xxxxxxx
 GEMINI_MODEL=models/gemini-pro
 PROMPT_REVISION_BASE=Evalúa el siguiente texto motivacional según criterios académicos y da sugerencias de mejora.
 ```
 
 ---
 
+## 🧪 Pruebas y Simulación
+
+Puedes usar **Postman** para realizar pruebas de integración:
+
+- `POST http://localhost:4000/respuesta-analizada` → dispara todo el flujo.
+- `GET http://localhost:4000/respuestas` → revisa si se guardó correctamente.
+
+---
+
 ## 📦 Instalación y Ejecución
 
-1. Instalar dependencias:
+### Recomendaciones
 ```bash
+cd recomendaciones
 npm install
+npm run start:dev
 ```
 
-2. Configurar `.env` con tu API Key de Google AI
-
-3. Ejecutar el servidor:
+### Agente (practicas-ts)
 ```bash
+cd practicas-ts
+npm install
 npm run start:dev
 ```
 
 ---
 
-## 🧪 Simulación de Microservicios con Mock Server (Postman)
+## ✅ Requisitos Cumplidos del Proyecto Extra
 
-- **GET** `https://<mock>.mock.pstmn.io/consulta-texto`  
-Devuelve un texto motivacional.
-
-- **POST** `https://<mock>.mock.pstmn.io/guardar-respuesta`  
-Recibe los datos generados por el LLM.
+| Requisito                                     | Estado   |
+|----------------------------------------------|----------|
+| Endpoint de activación RESTful               | ✅        |
+| Flujo con al menos 3 pasos lógicos           | ✅        |
+| Uso de un modelo LLM (Gemini)                | ✅        |
+| Consumo de otro microservicio                | ✅        |
+| Persistencia final del resultado             | ✅        |
+| Separación de responsabilidades              | ✅        |
+| Documentación clara (README)                 | ✅        |
 
 ---
 
-## 📊 Ejemplo del Flujo del Agente
+## 🧠 Flujo del Agente (Mermaid)
 
 ```mermaid
 graph TD
-    A[Inicio: POST /v1/start-analysis-agent] --> B[Consulta: GET /consulta-texto]
-    B --> C[Procesamiento con Gemini API]
-    C --> D[Guardar con POST /guardar-respuesta]
-    D --> E[Respuesta final al cliente]
-
+    A[POST /respuesta-analizada (recomendaciones)] --> B[Agente recibe texto (start-analysis-agent)]
+    B --> C[Gemini analiza el texto]
+    C --> D[Resultado retornado a recomendaciones]
+    D --> E[Resultado guardado en BD]
 ```
 
